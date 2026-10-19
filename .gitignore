@@ -1,9 +1,8 @@
-# Binaries (anchored to root)
-/bin/
-/api
-/mcp
-
-# Environment
+# Backend Binaries & Environment
+back/bin/
+back/api
+back/mcp
+back/.env
 .env
 
 # Go
@@ -18,10 +17,20 @@ coverage.*
 !coverage.go
 *.coverprofile
 profile.cov
-
-# Go workspace
 go.work
 go.work.sum
+
+# Frontend dependencies & build artifacts
+front/node_modules/
+front/.next/
+front/dist/
+front/build/
+front/.env
+front/.env.local
+front/.env.*.local
+node_modules/
+dist/
+build/
 
 # OS & IDE
 .DS_Store
