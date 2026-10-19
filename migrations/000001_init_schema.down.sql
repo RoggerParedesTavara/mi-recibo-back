@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS tenant_bill_charge_breakdowns CASCADE;
+DROP TABLE IF EXISTS tenant_bills CASCADE;
+DROP TABLE IF EXISTS tenant_consumptions CASCADE;
+DROP TABLE IF EXISTS master_bill_extra_charges CASCADE;
+DROP TABLE IF EXISTS master_bills CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
+DROP TABLE IF EXISTS properties CASCADE;
+DROP TABLE IF EXISTS owners CASCADE;

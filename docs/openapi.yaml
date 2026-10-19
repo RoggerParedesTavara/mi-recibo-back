@@ -1,0 +1,792 @@
+openapi: 3.0.3
+info:
+  title: Mi Recibo API
+  description: >
+    API REST para la gestión de inquilinos, inmuebles y liquidación automatizada 
+    de recibos de servicios (luz, agua, gas) con lista dinámica de cargos extras,
+    prorrateo equitativo, alertas de sobreconsumo y desglose transparente.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Servidor Local de Desarrollo
+
+paths:
+  /owners:
+    post:
+      summary: Registrar nuevo propietario
+      tags: [Propietarios]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+      responses:
+        '201':
+          description: Propietario creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /owners/{id}:
+    get:
+      summary: Obtener propietario por ID
+      tags: [Propietarios]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalle del propietario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Owner'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /owners/{owner_id}/properties:
+    post:
+      summary: Crear una nueva propiedad (casa/departamento)
+      tags: [Propiedades]
+      parameters:
+        - name: owner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePropertyRequest'
+      responses:
+        '201':
+          description: Propiedad creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+    get:
+      summary: Listar propiedades de un propietario
+      tags: [Propiedades]
+      parameters:
+        - name: owner_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de propiedades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Property'
+
+  /properties/{id}:
+    get:
+      summary: Obtener propiedad por ID
+      tags: [Propiedades]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /properties/{property_id}/tenants:
+    post:
+      summary: Registrar inquilino en una propiedad
+      tags: [Inquilinos]
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Inquilino registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+    get:
+      summary: Listar inquilinos de una propiedad
+      tags: [Inquilinos]
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filtrar solo inquilinos activos
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tenant'
+
+  /tenants/{id}:
+    put:
+      summary: Actualizar datos de un inquilino (nombre, teléfono, habitación, estado activo)
+      tags: [Inquilinos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tenant'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+  /tenants/{id}/bills:
+    get:
+      summary: Listar histórico de recibos emitidos a un inquilino
+      tags: [Inquilinos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantBillDetail'
+
+  /properties/{property_id}/master-bills:
+    post:
+      summary: Registrar recibo principal de un servicio con lista dinámica de cargos extras
+      tags: [Recibos Principales]
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMasterBillRequest'
+      responses:
+        '201':
+          description: Recibo principal creado con cargos calculados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterBill'
+    get:
+      summary: Listar recibos principales de una propiedad
+      tags: [Recibos Principales]
+      parameters:
+        - name: property_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: service
+          in: query
+          schema:
+            type: string
+            enum: [LUZ, AGUA, GAS]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MasterBill'
+
+  /master-bills/{id}:
+    get:
+      summary: Obtener detalle del recibo principal y su lista de cargos extras
+      tags: [Recibos Principales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterBill'
+
+  /master-bills/{id}/consumptions:
+    post:
+      summary: Cargar lecturas de consumo mensual de los inquilinos
+      description: >
+        Registra las unidades consumidas de cada inquilino. Compara automáticamente
+        con el mes previo del mismo servicio y marca alertas de sobreconsumo (spike).
+      tags: [Consumos Mensuales]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordConsumptionsRequest'
+      responses:
+        '200':
+          description: Lecturas registradas con evaluación de variación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  consumptions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantConsumption'
+
+  /master-bills/{id}/calculate:
+    post:
+      summary: Ejecutar cálculo y liquidación mensual del recibo principal
+      description: >
+        Divide cada cargo extra de la lista equitativamente entre N inquilinos activos,
+        multiplica el consumo individual por el precio unitario y genera los recibos
+        individuales con desglose detallado en una transacción atómica.
+      tags: [Liquidación]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recibos individuales generados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  tenant_bills:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantBillDetail'
+
+  /master-bills/{id}/tenant-bills:
+    get:
+      summary: Listar recibos de todos los inquilinos para un recibo principal
+      tags: [Liquidación]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantBillDetail'
+
+  /tenant-bills/{id}:
+    get:
+      summary: Consultar recibo individual de un inquilino con desglose transparente
+      tags: [Recibos de Inquilinos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantBillDetail'
+
+  /tenant-bills/{id}/payment:
+    patch:
+      summary: Actualizar estado de pago del recibo del inquilino
+      tags: [Recibos de Inquilinos]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_paid]
+              properties:
+                is_paid:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+components:
+  schemas:
+    Owner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Carlos Dueño"
+        email:
+          type: string
+          format: email
+          example: "carlos@ejemplo.com"
+        phone:
+          type: string
+          example: "+54911223344"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateOwnerRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          example: "Carlos Dueño"
+        email:
+          type: string
+          format: email
+          example: "carlos@ejemplo.com"
+        phone:
+          type: string
+          example: "+54911223344"
+
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Casa Los Rosales"
+        address:
+          type: string
+          example: "Av. Principal 123"
+        created_at:
+          type: string
+          format: date-time
+
+    CreatePropertyRequest:
+      type: object
+      required: [name, address]
+      properties:
+        name:
+          type: string
+          example: "Casa Los Rosales"
+        address:
+          type: string
+          example: "Av. Principal 123"
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Juan Pérez"
+        email:
+          type: string
+          example: "juan@ejemplo.com"
+        phone:
+          type: string
+          example: "+54911556677"
+        room_or_unit:
+          type: string
+          example: "Habitación 1"
+        is_active:
+          type: boolean
+          example: true
+
+    CreateTenantRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Juan Pérez"
+        email:
+          type: string
+          example: "juan@ejemplo.com"
+        phone:
+          type: string
+          example: "+54911556677"
+        room_or_unit:
+          type: string
+          example: "Habitación 1"
+
+    ExtraChargeItem:
+      type: object
+      required: [description, amount]
+      properties:
+        description:
+          type: string
+          example: "Mantenimiento de la red"
+        amount:
+          type: string
+          example: "300.00"
+
+    MasterBillExtraCharge:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        master_bill_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          example: "Mantenimiento de la red"
+        amount:
+          type: string
+          example: "300.00"
+        created_at:
+          type: string
+          format: date-time
+
+    MasterBill:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        service_type:
+          type: string
+          enum: [LUZ, AGUA, GAS]
+        billing_year:
+          type: integer
+          example: 2026
+        billing_month:
+          type: integer
+          example: 10
+        total_consumption:
+          type: string
+          example: "350.0000"
+        unit_price:
+          type: string
+          example: "0.5000"
+        consumption_amount:
+          type: string
+          example: "175.00"
+        extra_charges_total:
+          type: string
+          example: "357.00"
+        total_amount:
+          type: string
+          example: "532.00"
+        status:
+          type: string
+          enum: [DRAFT, CALCULATED, PAID]
+        extra_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/MasterBillExtraCharge'
+
+    CreateMasterBillRequest:
+      type: object
+      required: [service_type, billing_year, billing_month, total_consumption, unit_price]
+      properties:
+        service_type:
+          type: string
+          enum: [LUZ, AGUA, GAS]
+          example: "LUZ"
+        billing_year:
+          type: integer
+          example: 2026
+        billing_month:
+          type: integer
+          example: 10
+        total_consumption:
+          type: number
+          example: 350.0
+        unit_price:
+          type: number
+          example: 0.50
+        issue_date:
+          type: string
+          format: date
+          example: "2026-10-01"
+        due_date:
+          type: string
+          format: date
+          example: "2026-10-25"
+        extra_charges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtraChargeItem'
+
+    ReadingInput:
+      type: object
+      required: [tenant_id, consumed_units]
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+        consumed_units:
+          type: number
+          example: 80.0
+        previous_reading:
+          type: number
+        current_reading:
+          type: number
+
+    RecordConsumptionsRequest:
+      type: object
+      required: [readings]
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadingInput'
+
+    TenantConsumption:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        master_bill_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        consumed_units:
+          type: string
+          example: "80.0000"
+        previous_month_consumption:
+          type: string
+          example: "60.0000"
+        variation_percentage:
+          type: string
+          example: "33.33"
+        alert_spike:
+          type: boolean
+          example: true
+        alert_message:
+          type: string
+          example: "El consumo aumentó un 33.33% respecto al mes anterior."
+
+    TenantBillChargeBreakdown:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          example: "Mantenimiento de la red"
+        original_amount:
+          type: string
+          example: "300.00"
+        tenants_count:
+          type: integer
+          example: 3
+        tenant_share:
+          type: string
+          example: "100.00"
+
+    TenantBillDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        tenant_name:
+          type: string
+          example: "Juan Pérez"
+        room_or_unit:
+          type: string
+          example: "Habitación 1"
+        property_name:
+          type: string
+          example: "Casa Los Rosales"
+        service_type:
+          type: string
+          example: "LUZ"
+        billing_year:
+          type: integer
+          example: 2026
+        billing_month:
+          type: integer
+          example: 10
+        consumed_units:
+          type: string
+          example: "80.0000"
+        unit_price:
+          type: string
+          example: "0.5000"
+        consumption_amount:
+          type: string
+          example: "40.00"
+        extra_charges_total_share:
+          type: string
+          example: "119.00"
+        total_amount:
+          type: string
+          example: "159.00"
+        status:
+          type: string
+          enum: [PENDING, PAID]
+        alert_spike:
+          type: boolean
+          example: true
+        alert_message:
+          type: string
+        previous_month_units:
+          type: string
+        breakdowns:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantBillChargeBreakdown'
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "error de validación"
+
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Parámetros inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflicto o registro duplicado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

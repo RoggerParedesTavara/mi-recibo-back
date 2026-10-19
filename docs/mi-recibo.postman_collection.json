@@ -1,0 +1,158 @@
+{
+  "info": {
+    "name": "Mi Recibo API",
+    "description": "Colección completa para probar el backend de Mi Recibo en Go y PostgreSQL.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "ownerId", "value": "" },
+    { "key": "propertyId", "value": "" },
+    { "key": "tenant1Id", "value": "" },
+    { "key": "tenant2Id", "value": "" },
+    { "key": "tenant3Id", "value": "" },
+    { "key": "masterBillId", "value": "" },
+    { "key": "tenantBillId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Propietarios",
+      "item": [
+        {
+          "name": "Crear Propietario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Carlos Propietario\",\n  \"email\": \"carlos@recibo.com\",\n  \"phone\": \"+54911223344\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/owners", "host": ["{{baseUrl}}"], "path": ["owners"] }
+          }
+        },
+        {
+          "name": "Obtener Propietario",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/owners/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["owners", "{{ownerId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Propiedades",
+      "item": [
+        {
+          "name": "Crear Propiedad",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Casa Los Rosales\",\n  \"address\": \"Av. Principal 123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/owners/{{ownerId}}/properties", "host": ["{{baseUrl}}"], "path": ["owners", "{{ownerId}}", "properties"] }
+          }
+        },
+        {
+          "name": "Listar Propiedades del Dueño",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/owners/{{ownerId}}/properties", "host": ["{{baseUrl}}"], "path": ["owners", "{{ownerId}}", "properties"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Inquilinos",
+      "item": [
+        {
+          "name": "Crear Inquilino 1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"email\": \"juan@test.com\",\n  \"phone\": \"+54911111111\",\n  \"room_or_unit\": \"Habitación 1\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/properties/{{propertyId}}/tenants", "host": ["{{baseUrl}}"], "path": ["properties", "{{propertyId}}", "tenants"] }
+          }
+        },
+        {
+          "name": "Listar Inquilinos de la Casa",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/properties/{{propertyId}}/tenants?active=true", "host": ["{{baseUrl}}"], "path": ["properties", "{{propertyId}}", "tenants"], "query": [{"key": "active", "value": "true"}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Recibos Principales",
+      "item": [
+        {
+          "name": "Crear Recibo Principal con Cargos Extras",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"LUZ\",\n  \"billing_year\": 2026,\n  \"billing_month\": 10,\n  \"total_consumption\": 350.0,\n  \"unit_price\": 0.50,\n  \"extra_charges\": [\n    {\n      \"description\": \"Mantenimiento de la red\",\n      \"amount\": 300.00\n    },\n    {\n      \"description\": \"Alumbrado público\",\n      \"amount\": 45.00\n    },\n    {\n      \"description\": \"Cargo fijo\",\n      \"amount\": 12.00\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/properties/{{propertyId}}/master-bills", "host": ["{{baseUrl}}"], "path": ["properties", "{{propertyId}}", "master-bills"] }
+          }
+        },
+        {
+          "name": "Obtener Recibo Principal",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/master-bills/{{masterBillId}}", "host": ["{{baseUrl}}"], "path": ["master-bills", "{{masterBillId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Consumos y Liquidación",
+      "item": [
+        {
+          "name": "Cargar Consumos de Inquilinos",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"readings\": [\n    {\n      \"tenant_id\": \"{{tenant1Id}}\",\n      \"consumed_units\": 80.0\n    },\n    {\n      \"tenant_id\": \"{{tenant2Id}}\",\n      \"consumed_units\": 120.0\n    },\n    {\n      \"tenant_id\": \"{{tenant3Id}}\",\n      \"consumed_units\": 100.0\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/master-bills/{{masterBillId}}/consumptions", "host": ["{{baseUrl}}"], "path": ["master-bills", "{{masterBillId}}", "consumptions"] }
+          }
+        },
+        {
+          "name": "Ejecutar Cálculo y Liquidación",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/master-bills/{{masterBillId}}/calculate", "host": ["{{baseUrl}}"], "path": ["master-bills", "{{masterBillId}}", "calculate"] }
+          }
+        },
+        {
+          "name": "Ver Recibo Individual con Desglose",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/tenant-bills/{{tenantBillId}}", "host": ["{{baseUrl}}"], "path": ["tenant-bills", "{{tenantBillId}}"] }
+          }
+        },
+        {
+          "name": "Marcar Recibo como Pagado",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_paid\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tenant-bills/{{tenantBillId}}/payment", "host": ["{{baseUrl}}"], "path": ["tenant-bills", "{{tenantBillId}}", "payment"] }
+          }
+        }
+      ]
+    }
+  ]
+}
